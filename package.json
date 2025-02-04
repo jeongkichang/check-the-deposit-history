@@ -1,7 +1,9 @@
 {
   "scripts": {
+    "start:api": "nest start api --watch",
     "start:cron": "nest start cron --watch",
-    "build": "nest build --projects cron",
+    "build": "yarn build:api && yarn build:cron",
+    "build:api": "nest build api",
     "build:cron": "nest build cron"
   },
   "dependencies": {
