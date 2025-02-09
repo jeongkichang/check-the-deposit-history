@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { CronService } from './cron.service';
-import { DbModule } from "@libs/db/db.module";
+import { DbModule } from "@libs/db";
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
     imports: [
@@ -10,6 +11,7 @@ import { DbModule } from "@libs/db/db.module";
             envFilePath: '.env',
         }),
         DbModule,
+        ScheduleModule.forRoot(),
     ],
     providers: [CronService],
 })
