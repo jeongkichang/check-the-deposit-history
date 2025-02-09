@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from "@nestjs/config";
+import { GmailToken, GmailTokenSchema } from "@libs/db/schemas/gmail-token.schema";
 
 @Module({
     imports: [
@@ -15,6 +16,13 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
             }),
             inject: [ConfigService],
         }),
+        MongooseModule.forFeature([
+            {
+                name: GmailToken.name,
+                schema: GmailTokenSchema,
+                collection: 'gmail_token'
+            },
+        ]),
     ],
     exports: [
         MongooseModule,
