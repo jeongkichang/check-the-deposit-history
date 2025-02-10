@@ -7,6 +7,7 @@ import { Model } from 'mongoose';
 import * as fs from 'fs';
 import * as path from 'path';
 import { format } from 'date-fns';
+import * as puppeteer from 'puppeteer';
 
 import {
     TransactionAttachment,
@@ -22,6 +23,11 @@ import {
     GmailSyncState,
     GmailSyncStateDocument
 } from "@libs/db/schemas/gmail-sync-state.schema";
+
+import {
+    LocalParseState,
+    LocalParseStateDocument
+} from '@libs/db/schemas/local-parse-state.schema';
 
 @Injectable()
 export class CronService {
@@ -42,6 +48,9 @@ export class CronService {
 
         @InjectModel(GmailSyncState.name)
         private readonly gmailSyncStateModel: Model<GmailSyncStateDocument>,
+
+        @InjectModel(LocalParseState.name)
+        private readonly parseStateModel: Model<LocalParseStateDocument>,
     ) {}
 
     async fetchTransactionMails() {
@@ -240,5 +249,110 @@ export class CronService {
         const slashIndex = mime.indexOf('/');
         if (slashIndex === -1) return '';
         return mime.substring(slashIndex + 1);
+    }
+
+    async parseLocalHtmlFiles() {
+        this.logger.log('Start parsing local HTML files in data/ ...');
+
+        try {
+            let parseState = await this.parseStateModel.findOne({ key: 'default' }).exec();
+            if (!parseState) {
+                parseState = new this.parseStateModel({
+                    key: 'default',
+                    lastFileName: '',
+                });
+                await parseState.save();
+            }
+
+            const lastFileName = parseState.lastFileName || '';
+
+            const dataDir = path.join(process.cwd(), 'data');
+            if (!fs.existsSync(dataDir)) {
+                this.logger.warn('data directory does not exist. Nothing to parse.');
+                return;
+            }
+
+            const files = fs.readdirSync(dataDir)
+                .filter((f) => f.endsWith('.html'))
+                .sort();
+
+            const newFiles = files.filter(f => f > lastFileName);
+
+            if (newFiles.length === 0) {
+                this.logger.log(`No new HTML files to parse. Last: ${lastFileName}`);
+                return;
+            }
+
+            this.logger.log(`Found ${newFiles.length} new files to parse`);
+
+            const browser = await puppeteer.launch({
+                headless: true,
+            });
+
+            let lastProcessedFile = lastFileName;
+
+            for (const fileName of newFiles) {
+                const filePath = `file://${path.join(dataDir, fileName)}`;
+                this.logger.log(`Parsing file: ${fileName}`);
+
+                const extracted = await this.parseSingleHtml(browser, filePath);
+
+                this.logger.log(`Parsed result = ${JSON.stringify(extracted)}`);
+
+                lastProcessedFile = fileName;
+            }
+
+            await browser.close();
+
+            parseState.lastFileName = lastProcessedFile;
+            // 테스트 할 때까지는 대기
+            // await parseState.save();
+
+            this.logger.log(`Updated lastFileName = ${lastProcessedFile}`);
+        } catch (error) {
+            let errMsg = 'unknown error';
+            let errStack = 'unknown stack';
+            if (error instanceof Error) {
+                errMsg = error.message;
+                errStack = error.stack || '';
+            }
+            this.logger.error(`Error in parseLocalHtmlFiles: ${errMsg}`, errStack);
+        }
+    }
+
+    private async parseSingleHtml(browser: puppeteer.Browser, filePath: string) {
+        const page = await browser.newPage();
+
+        await page.goto(filePath, { waitUntil: 'networkidle0' });
+
+        await page.waitForFunction(() => typeof (window as any).doAction === 'function');
+
+        const passwordValue = process.env.FILE_PASSWORD || 'file_password';
+
+        await page.evaluate((pw) => {
+            const element = document.getElementById('password') as HTMLInputElement;
+            if (element) {
+                element.value = pw;
+                (window as any).doAction();
+            }
+        }, passwordValue);
+
+        await page.waitForSelector('.static_body');
+
+        const extractedData = await page.evaluate(() => {
+            const inputMoneyElement = document.querySelectorAll('.dynamic_body')[3] as HTMLElement;
+            const depositorNameElement = document.querySelectorAll('.dynamic_body')[7] as HTMLElement;
+
+            const inputMoney = inputMoneyElement ? inputMoneyElement.innerText : '';
+            const depositorName = depositorNameElement ? depositorNameElement.innerText : '';
+
+            return {
+                depositorName,
+                inputMoney,
+            };
+        });
+
+        await page.close();
+        return extractedData;
     }
 }

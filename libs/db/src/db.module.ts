@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { GmailToken, GmailTokenSchema } from "@libs/db/schemas/gmail-token.schema";
 import { GmailSyncState, GmailSyncStateSchema } from "@libs/db/schemas/gmail-sync-state.schema";
 import { TransactionAttachment, TransactionAttachmentSchema } from "@libs/db/schemas/transaction-attachment.schema";
+import {LocalParseState, LocalParseStateSchema} from "@libs/db/schemas/local-parse-state.schema";
 
 @Module({
     imports: [
@@ -33,6 +34,11 @@ import { TransactionAttachment, TransactionAttachmentSchema } from "@libs/db/sch
                 name: TransactionAttachment.name,
                 schema: TransactionAttachmentSchema,
                 collection: 'transaction_attachment',
+            },
+            {
+                name: LocalParseState.name,
+                schema: LocalParseStateSchema,
+                collection: 'local_parse_state',
             },
         ]),
     ],
