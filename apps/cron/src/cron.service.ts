@@ -29,6 +29,26 @@ import {
     LocalParseStateDocument
 } from '@libs/db/schemas/local-parse-state.schema';
 
+import {
+    TransactionDeposit,
+    TransactionDepositDocument,
+} from '@libs/db/schemas/transaction-deposit.schema';
+
+function parseDateFromFilename(fileName: string): Date {
+    const match = fileName.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\.html$/);
+    if (!match) {
+        return new Date(); // fallback
+    }
+    const year = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10);
+    const day = parseInt(match[3], 10);
+    const hour = parseInt(match[4], 10);
+    const minute = parseInt(match[5], 10);
+    const second = parseInt(match[6], 10);
+
+    return new Date(year, month - 1, day, hour, minute, second);
+}
+
 @Injectable()
 export class CronService {
     private readonly logger = new Logger(CronService.name);
@@ -51,6 +71,9 @@ export class CronService {
 
         @InjectModel(LocalParseState.name)
         private readonly parseStateModel: Model<LocalParseStateDocument>,
+
+        @InjectModel(TransactionDeposit.name)
+        private readonly depositModel: Model<TransactionDepositDocument>,
     ) {}
 
     async fetchTransactionMails() {
@@ -295,9 +318,26 @@ export class CronService {
                 const filePath = `file://${path.join(dataDir, fileName)}`;
                 this.logger.log(`Parsing file: ${fileName}`);
 
+                const depositTime = parseDateFromFilename(fileName);
+
                 const extracted = await this.parseSingleHtml(browser, filePath);
 
                 this.logger.log(`Parsed result = ${JSON.stringify(extracted)}`);
+
+                const rawMoney = extracted.inputMoney || '';
+                const amountStr = rawMoney.replace(/,/g, '').replace(/원/g, '');
+                const amount = parseInt(amountStr, 10) || 0;
+
+                const depositorName = extracted.depositorName || 'unknown';
+
+                const doc = new this.depositModel({
+                    depositTime,
+                    depositorName,
+                    amount,
+                });
+                await doc.save();
+
+                this.logger.log(`Saved deposit record: ${JSON.stringify(doc)}`);
 
                 lastProcessedFile = fileName;
             }

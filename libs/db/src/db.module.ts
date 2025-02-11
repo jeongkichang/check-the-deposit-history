@@ -5,6 +5,7 @@ import { GmailToken, GmailTokenSchema } from "@libs/db/schemas/gmail-token.schem
 import { GmailSyncState, GmailSyncStateSchema } from "@libs/db/schemas/gmail-sync-state.schema";
 import { TransactionAttachment, TransactionAttachmentSchema } from "@libs/db/schemas/transaction-attachment.schema";
 import {LocalParseState, LocalParseStateSchema} from "@libs/db/schemas/local-parse-state.schema";
+import {TransactionDeposit, TransactionDepositSchema} from "@libs/db/schemas/transaction-deposit.schema";
 
 @Module({
     imports: [
@@ -39,6 +40,11 @@ import {LocalParseState, LocalParseStateSchema} from "@libs/db/schemas/local-par
                 name: LocalParseState.name,
                 schema: LocalParseStateSchema,
                 collection: 'local_parse_state',
+            },
+            {
+                name: TransactionDeposit.name,
+                schema: TransactionDepositSchema,
+                collection: 'transaction_deposit',
             },
         ]),
     ],
