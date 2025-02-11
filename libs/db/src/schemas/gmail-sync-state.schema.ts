@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-@Schema({ collection: 'gmailSyncState' })
+@Schema()
 export class GmailSyncState {
     @Prop({ required: true, default: 'default' })
     key?: string;

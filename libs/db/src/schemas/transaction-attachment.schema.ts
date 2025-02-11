@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-@Schema({ collection: 'transactionAttachments' })
+@Schema()
 export class TransactionAttachment {
     @Prop()
     messageId?: string;  // Gmail 메일 ID

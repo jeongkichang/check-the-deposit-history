@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-@Schema({ collection: 'localParseState' })
+@Schema()
 export class LocalParseState {
     @Prop({ required: true, default: 'default' })
     key?: string;
