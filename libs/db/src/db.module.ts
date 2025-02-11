@@ -7,6 +7,7 @@ import { TransactionAttachment, TransactionAttachmentSchema } from "@libs/db/sch
 import { LocalParseState, LocalParseStateSchema } from "@libs/db/schemas/local-parse-state.schema";
 import { TransactionDeposit, TransactionDepositSchema } from "@libs/db/schemas/transaction-deposit.schema";
 import { SubscriptionUser, SubscriptionUserSchema } from "@libs/db/schemas/subscription-user.schema";
+import { BananaUnitPrice, BananaUnitPriceSchema } from "@libs/db/schemas/banana-unit-price.schema";
 
 @Module({
     imports: [
@@ -51,6 +52,11 @@ import { SubscriptionUser, SubscriptionUserSchema } from "@libs/db/schemas/subsc
                 name: SubscriptionUser.name,
                 schema: SubscriptionUserSchema,
                 collection: 'subscription_user',
+            },
+            {
+                name: BananaUnitPrice.name,
+                schema: BananaUnitPriceSchema,
+                collection: 'banana_unit_price',
             },
         ]),
     ],
