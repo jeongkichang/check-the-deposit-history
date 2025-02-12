@@ -8,6 +8,7 @@ import { LocalParseState, LocalParseStateSchema } from "@libs/db/schemas/local-p
 import { TransactionDeposit, TransactionDepositSchema } from "@libs/db/schemas/transaction-deposit.schema";
 import { SubscriptionUser, SubscriptionUserSchema } from "@libs/db/schemas/subscription-user.schema";
 import { BananaUnitPrice, BananaUnitPriceSchema } from "@libs/db/schemas/banana-unit-price.schema";
+import { BananaSettlement, BananaSettlementSchema } from "@libs/db/schemas/banana-settlement.schema";
 
 @Module({
     imports: [
@@ -57,6 +58,11 @@ import { BananaUnitPrice, BananaUnitPriceSchema } from "@libs/db/schemas/banana-
                 name: BananaUnitPrice.name,
                 schema: BananaUnitPriceSchema,
                 collection: 'banana_unit_price',
+            },
+            {
+                name: BananaSettlement.name,
+                schema: BananaSettlementSchema,
+                collection: 'banana_settlement',
             },
         ]),
     ],

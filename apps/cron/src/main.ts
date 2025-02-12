@@ -7,6 +7,6 @@ async function bootstrap() {
     await app.init();
 
    // const cronService = app.get(CronService);
-   // await cronService.parseLocalHtmlFiles();
+   // await cronService.checkBananaSettlements();
 }
 bootstrap();

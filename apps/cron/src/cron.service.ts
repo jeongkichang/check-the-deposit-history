@@ -21,18 +21,33 @@ import {
 
 import {
     GmailSyncState,
-    GmailSyncStateDocument
+    GmailSyncStateDocument,
 } from "@libs/db/schemas/gmail-sync-state.schema";
 
 import {
     LocalParseState,
-    LocalParseStateDocument
+    LocalParseStateDocument,
 } from '@libs/db/schemas/local-parse-state.schema';
 
 import {
     TransactionDeposit,
     TransactionDepositDocument,
 } from '@libs/db/schemas/transaction-deposit.schema';
+
+import {
+    BananaUnitPrice,
+    BananaUnitPriceDocument,
+} from '@libs/db/schemas/banana-unit-price.schema';
+
+import {
+    SubscriptionUser,
+    SubscriptionUserDocument,
+} from '@libs/db/schemas/subscription-user.schema';
+
+import {
+    BananaSettlement,
+    BananaSettlementDocument,
+} from '@libs/db/schemas/banana-settlement.schema';
 
 function parseDateFromFilename(fileName: string): Date {
     const match = fileName.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\.html$/);
@@ -74,6 +89,15 @@ export class CronService {
 
         @InjectModel(TransactionDeposit.name)
         private readonly depositModel: Model<TransactionDepositDocument>,
+
+        @InjectModel(BananaUnitPrice.name)
+        private readonly unitPriceModel: Model<BananaUnitPriceDocument>,
+
+        @InjectModel(SubscriptionUser.name)
+        private readonly userModel: Model<SubscriptionUserDocument>,
+
+        @InjectModel(BananaSettlement.name)
+        private readonly settlementModel: Model<BananaSettlementDocument>,
     ) {}
 
     async fetchTransactionMails() {
@@ -394,5 +418,91 @@ export class CronService {
 
         await page.close();
         return extractedData;
+    }
+
+    async checkBananaSettlements() {
+        this.logger.log('Start checking banana settlements...');
+
+        const allDeposits = await this.depositModel.find().exec();
+        this.logger.log(`Found ${allDeposits.length} deposits.`);
+
+        for (const deposit of allDeposits) {
+            const userName = deposit.depositorName || '';
+            const depositTime = deposit.depositTime;
+            const depositAmount = deposit.amount || 0;
+
+            if (!userName || !depositTime) {
+                continue;
+            }
+
+            const period = this.getPeriodFromDate(depositTime);
+            if (!period) {
+                this.logger.warn(
+                    `Deposit on weekend or no matching period => depositTime=${depositTime}`,
+                );
+                continue;
+            }
+
+            const unitPriceDoc = await this.unitPriceModel.findOne({ period }).exec();
+            if (!unitPriceDoc) {
+                this.logger.warn(`No unitPrice found for period=${period}`);
+                continue;
+            }
+            const unitPrice = unitPriceDoc.unitPrice || 0;
+
+            const subscriptionDoc = await this.userModel.findOne({ name: userName }).exec();
+            if (!subscriptionDoc) {
+                this.logger.warn(`No subscription user found for name=${userName}`);
+                continue;
+            }
+            const quantity = subscriptionDoc.quantity || 0;
+
+            const requiredAmount = unitPrice * quantity;
+
+            const isSettled = depositAmount >= requiredAmount;
+
+            await this.settlementModel.findOneAndUpdate(
+                { userName, period },
+                {
+                    userName,
+                    period,
+                    depositTime,
+                    depositAmount,
+                    requiredAmount,
+                    isSettled,
+                },
+                { upsert: true, new: true },
+            );
+
+            this.logger.log(`Settle: ${userName}/${period} deposit=${depositAmount} needed=${requiredAmount} => isSettled=${isSettled}`);
+        }
+
+        this.logger.log('Banana settlement check done.');
+    }
+
+    private getPeriodFromDate(date: Date): string | null {
+        const dayOfWeek = date.getDay();
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+            return null;
+        }
+
+        const monday = new Date(date);
+        monday.setHours(0, 0, 0, 0);   // 시간,분,초,밀리초 0으로 세팅(선택)
+        monday.setDate(monday.getDate() - (dayOfWeek - 1));
+
+        const friday = new Date(monday);
+        friday.setDate(friday.getDate() + 4);
+
+        const mondayStr = this.toYYMMDD(monday);
+        const fridayStr = this.toYYMMDD(friday);
+
+        return `${mondayStr}-${fridayStr}`;
+    }
+
+    private toYYMMDD(date: Date): string {
+        const yy = (date.getFullYear() % 100).toString().padStart(2, '0');
+        const mm = (date.getMonth() + 1).toString().padStart(2, '0');
+        const dd = date.getDate().toString().padStart(2, '0');
+        return yy + mm + dd;
     }
 }
