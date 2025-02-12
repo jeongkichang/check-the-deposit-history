@@ -502,7 +502,7 @@ export class CronService {
         return yy + mm + dd;
     }
 
-    @Cron(CronExpression.EVERY_MINUTE)
+    @Cron(CronExpression.EVERY_5_MINUTES)
     async allInOneJob() {
         await this.fetchTransactionMails();
         await this.parseLocalHtmlFiles();
