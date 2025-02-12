@@ -21,29 +21,32 @@ export class ApiService {
 
     async getSettlementStatusForPeriod(period: string) {
         const allUsers = await this.userModel.find().exec();
-        const settled: string[] = [];
-        const notSettled: string[] = [];
+
+        const three: Array<{ name: string; isSettled: boolean }> = [];
+        const four: Array<{ name: string; isSettled: boolean }> = [];
 
         for (const user of allUsers) {
             const userName = user.name;
-            if (!userName) continue;
+            const quantity = user.quantity;
+            if (!userName || !quantity) continue;
 
             const settlementDoc = await this.settlementModel.findOne({
                 userName,
                 period,
             }).exec();
+            const isSettled = settlementDoc?.isSettled === true;
 
-            if (settlementDoc && settlementDoc.isSettled) {
-                settled.push(userName);
-            } else {
-                notSettled.push(userName);
+            if (quantity === 3) {
+                three.push({ name: userName, isSettled });
+            } else if (quantity === 4) {
+                four.push({ name: userName, isSettled });
             }
         }
 
         return {
             period,
-            settled,
-            notSettled,
+            three,
+            four,
         };
     }
 }
