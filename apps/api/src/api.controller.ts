@@ -1,4 +1,4 @@
-import { Controller, Get, Req, Res } from '@nestjs/common';
+import {Controller, Get, Logger, Param, Req, Res} from '@nestjs/common';
 import { Request, Response } from 'express';
 import { google } from 'googleapis';
 import { InjectModel } from '@nestjs/mongoose';
@@ -7,9 +7,12 @@ import {
     GmailToken,
     GmailTokenDocument,
 } from '@libs/db/schemas/gmail-token.schema';
+import { ApiService } from "./api.service";
 
 @Controller('api')
 export class ApiController {
+    private readonly logger = new Logger(ApiController.name);
+
     private oauth2Client = new google.auth.OAuth2(
         process.env.GOOGLE_CLIENT_ID,
         process.env.GOOGLE_CLIENT_SECRET,
@@ -19,6 +22,8 @@ export class ApiController {
     constructor(
         @InjectModel(GmailToken.name)
         private readonly gmailTokenModel: Model<GmailTokenDocument>,
+
+        private readonly apiService: ApiService,
     ) {}
 
     @Get('gmail/auth')
@@ -108,5 +113,50 @@ export class ApiController {
                 error: errMsg,
             });
         }
+    }
+
+    @Get('settlement/:period?')
+    async checkSettlement(@Param('period') period?: string) {
+        this.logger.log(`checkSettlement called. period param = ${period}`);
+
+        if (!period) {
+            const now = new Date();
+            period = this.getPeriodFromDate(now);
+            if (!period) {
+                return {
+                    message: '주말이거나 해당 주차를 계산할 수 없습니다.',
+                    date: now.toISOString(),
+                };
+            }
+        }
+
+        const result = await this.apiService.getSettlementStatusForPeriod(period);
+        return result;
+    }
+
+    private getPeriodFromDate(date: Date): string | undefined {
+        const dayOfWeek = date.getDay();
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+            return undefined;
+        }
+
+        const monday = new Date(date);
+        monday.setHours(0, 0, 0, 0);
+        monday.setDate(monday.getDate() - (dayOfWeek - 1));
+
+        const friday = new Date(monday);
+        friday.setDate(friday.getDate() + 4);
+
+        const mondayStr = this.toYYMMDD(monday);
+        const fridayStr = this.toYYMMDD(friday);
+
+        return `${mondayStr}-${fridayStr}`;
+    }
+
+    private toYYMMDD(date: Date) {
+        const yy = (date.getFullYear() % 100).toString().padStart(2, '0');
+        const mm = (date.getMonth() + 1).toString().padStart(2, '0');
+        const dd = date.getDate().toString().padStart(2, '0');
+        return yy + mm + dd;
     }
 }
