@@ -1,6 +1,5 @@
 import {Injectable, Logger} from "@nestjs/common";
-// 크론은 일단 대기
-// import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { google } from 'googleapis';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -155,8 +154,7 @@ export class CronService {
                     key: 'default',
                     lastSyncedDate: new Date('2025-02-03T00:00:00'),
                 });
-                // 테스트 할 때까지는 대기
-                // await syncState.save();
+                await syncState.save();
             }
 
             const lastSyncDate = syncState.lastSyncedDate  ?? new Date('2025-02-03T00:00:00');
@@ -249,8 +247,7 @@ export class CronService {
                                 filePath: `data/${finalName}`,
                                 mimeType: part.mimeType,
                             });
-                            // 테스트 할 때 까지 대기
-                            // await attachDoc.save();
+                            await attachDoc.save();
 
                             totalFetched++;
                             this.logger.log(`Saved attachment => ${finalName}`);
@@ -369,8 +366,7 @@ export class CronService {
             await browser.close();
 
             parseState.lastFileName = lastProcessedFile;
-            // 테스트 할 때까지는 대기
-            // await parseState.save();
+            await parseState.save();
 
             this.logger.log(`Updated lastFileName = ${lastProcessedFile}`);
         } catch (error) {
@@ -504,5 +500,12 @@ export class CronService {
         const mm = (date.getMonth() + 1).toString().padStart(2, '0');
         const dd = date.getDate().toString().padStart(2, '0');
         return yy + mm + dd;
+    }
+
+    @Cron(CronExpression.EVERY_MINUTE)
+    async allInOneJob() {
+        await this.fetchTransactionMails();
+        await this.parseLocalHtmlFiles();
+        await this.checkBananaSettlements();
     }
 }
