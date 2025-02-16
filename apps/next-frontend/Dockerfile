@@ -15,7 +15,6 @@ RUN yarn --cwd ./apps/next-frontend build
 FROM node:22-alpine
 WORKDIR /app
 
-# 빌드 결과(.next), package.json 등 복사
 COPY --from=builder /app/apps/next-frontend/.next ./apps/next-frontend/.next
 COPY --from=builder /app/apps/next-frontend/package.json ./apps/next-frontend/
 COPY --from=builder /app/yarn.lock ./
