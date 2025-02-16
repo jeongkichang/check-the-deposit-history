@@ -50,4 +50,14 @@ jobs:
           sshpass -p "${{ secrets.SERVER_PASSWORD }}" \
           ssh -o StrictHostKeyChecking=no \
           ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-          "cd ./check-the-deposit-history && docker-compose pull && docker-compose up -d"
+          "
+            # (1) /check-the-deposit-history 디렉터리 진입
+            cd ./check-the-deposit-history &&
+      
+            # (2) 최신 main 브랜치 가져오기
+            git pull origin main &&
+      
+            # (3) 최신 이미지를 pull & 재실행
+            docker-compose pull &&
+            docker-compose up -d
+          "
