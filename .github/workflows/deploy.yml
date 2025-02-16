@@ -50,4 +50,4 @@ jobs:
           sshpass -p "${{ secrets.SERVER_PASSWORD }}" \
           ssh -o StrictHostKeyChecking=no \
           ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-          "cd /check-the-deposit-history && docker-compose pull && docker-compose up -d"
+          "cd ./check-the-deposit-history && docker-compose pull && docker-compose up -d"
