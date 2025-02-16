@@ -1,5 +1,5 @@
 # ---------- 1) 빌드 스테이지 ----------
-FROM node:18 as builder
+FROM node:22 as builder
 
 WORKDIR /app
 
@@ -8,14 +8,14 @@ COPY package.json yarn.lock ./
 RUN yarn install
 
 # (2) 소스 및 설정 파일 복사
-COPY nest-cli.json tsconfig.json .env ./
+COPY nest-cli.json tsconfig.json ./
 COPY libs ./libs
 COPY apps ./apps
 
 RUN yarn build:api
 
 # ---------- 2) 런타임 스테이지 ----------
-FROM node:18-alpine
+FROM node:22-alpine
 WORKDIR /app
 
 # (4) 빌드 산출물(dist) 복사
