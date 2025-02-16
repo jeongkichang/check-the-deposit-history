@@ -2,9 +2,7 @@ version: '3.8'
 
 services:
   api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
+    image: ghcr.io/jeongkichang/check-the-deposit-history/api:latest
     container_name: api-service
     ports:
       - "3000:3000"
@@ -12,17 +10,13 @@ services:
       NODE_ENV: production
 
   cron:
-    build:
-      context: .
-      dockerfile: apps/cron/Dockerfile
+    image: ghcr.io/jeongkichang/check-the-deposit-history/cron:latest
     container_name: cron-service
     environment:
       NODE_ENV: production
 
   frontend:
-    build:
-      context: .
-      dockerfile: apps/next-frontend/Dockerfile
+    image: ghcr.io/jeongkichang/check-the-deposit-history/frontend:latest
     container_name: frontend-service
     ports:
       - "3001:3001"

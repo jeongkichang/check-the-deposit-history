@@ -1,0 +1,47 @@
+name: Build and Deploy to GHCR
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 리포지토리 체크아웃
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      # Docker 로그인: GHCR
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & Push API
+        run: |
+          docker build -t ghcr.io/${{ github.repository }}/api:latest -f apps/api/Dockerfile .
+          docker push ghcr.io/${{ github.repository }}/api:latest
+      - name: Build & Push Cron
+        run: |
+          docker build -t ghcr.io/${{ github.repository }}/cron:latest -f apps/cron/Dockerfile .
+          docker push ghcr.io/${{ github.repository }}/cron:latest
+      - name: Build & Push Frontend
+        run: |
+          docker build -t ghcr.io/${{ github.repository }}/frontend:latest -f apps/next-frontend/Dockerfile .
+          docker push ghcr.io/${{ github.repository }}/frontend:latest
+
+      - name: Install sshpass
+        run: sudo apt-get update && sudo apt-get install -y sshpass
+
+      # Production Server Deploy
+      - name: Deploy with sshpass
+        run: |
+          sshpass -p "${{ secrets.SERVER_PASSWORD }}" \
+          ssh -o StrictHostKeyChecking=no \
+          ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+          "cd /check-the-deposit-history && docker-compose pull && docker-compose up -d"
