@@ -27,5 +27,4 @@ RUN yarn install --production
 
 EXPOSE 3000
 
-# (7) 최종 실행
 CMD ["node", "dist/apps/api/src/main"]
