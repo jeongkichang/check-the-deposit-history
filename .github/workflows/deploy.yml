@@ -9,6 +9,9 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
 
+    permissions:
+      packages: write
+
     steps:
       # 리포지토리 체크아웃
       - name: Check out code
