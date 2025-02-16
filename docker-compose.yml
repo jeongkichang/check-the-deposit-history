@@ -4,16 +4,18 @@ services:
     container_name: api-service
     ports:
       - "3000:3000"
+    env_file:
+        - .env
     environment:
       NODE_ENV: production
-      env_file: .env
 
   cron:
     image: ghcr.io/jeongkichang/check-the-deposit-history/cron:latest
     container_name: cron-service
+    env_file:
+      - .env
     environment:
       NODE_ENV: production
-      env_file: .env
 
   frontend:
     image: ghcr.io/jeongkichang/check-the-deposit-history/frontend:latest
