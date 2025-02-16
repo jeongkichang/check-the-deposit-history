@@ -8,12 +8,14 @@ services:
       - "3000:3000"
     environment:
       NODE_ENV: production
+      env_file: .env
 
   cron:
     image: ghcr.io/jeongkichang/check-the-deposit-history/cron:latest
     container_name: cron-service
     environment:
       NODE_ENV: production
+      env_file: .env
 
   frontend:
     image: ghcr.io/jeongkichang/check-the-deposit-history/frontend:latest

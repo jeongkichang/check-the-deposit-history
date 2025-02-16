@@ -22,7 +22,7 @@ WORKDIR /app
 COPY --from=builder /app/dist ./dist
 
 # (5) 프로덕션 구동에 필요한 package.json, yarn.lock 복사
-COPY package.json yarn.lock .env ./
+COPY package.json yarn.lock ./
 RUN yarn install --production
 
 EXPOSE 3000
