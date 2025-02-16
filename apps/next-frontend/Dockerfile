@@ -1,5 +1,5 @@
 # ---------- 1) 빌드 스테이지 ----------
-FROM node:18 as builder
+FROM node:22 as builder
 
 WORKDIR /app
 
@@ -12,7 +12,7 @@ RUN yarn install
 RUN yarn --cwd ./apps/next-frontend build
 
 # ---------- 2) 런타임 스테이지 ----------
-FROM node:18-alpine
+FROM node:22-alpine
 WORKDIR /app
 
 # 빌드 결과(.next), package.json 등 복사
@@ -25,4 +25,4 @@ RUN yarn install --production --cwd ./apps/next-frontend
 EXPOSE 3001
 
 # 실행
-CMD ["yarn", "--cwd", "apps/next-frontend", "start"]
+CMD ["yarn", "--cwd", "apps/next-frontend", "start", "-p", "3001"]
