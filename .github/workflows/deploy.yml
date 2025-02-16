@@ -60,6 +60,6 @@ jobs:
             git pull origin main &&
       
             # (3) 최신 이미지를 pull & 재실행
-            docker-compose pull &&
-            docker-compose up -d
+            docker compose pull &&
+            docker compose up -d
           "
