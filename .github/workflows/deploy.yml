@@ -32,10 +32,12 @@ jobs:
         run: |
           docker build -t ghcr.io/${{ github.repository }}/api:latest -f apps/api/Dockerfile .
           docker push ghcr.io/${{ github.repository }}/api:latest
+
       - name: Build & Push Cron
         run: |
           docker build -t ghcr.io/${{ github.repository }}/cron:latest -f apps/cron/Dockerfile .
           docker push ghcr.io/${{ github.repository }}/cron:latest
+
       - name: Build & Push Frontend
         run: |
           docker build -t ghcr.io/${{ github.repository }}/frontend:latest -f apps/next-frontend/Dockerfile .
