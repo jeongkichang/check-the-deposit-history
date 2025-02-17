@@ -6,7 +6,7 @@ import { Model } from 'mongoose';
 import * as fs from 'fs';
 import * as path from 'path';
 import { format } from 'date-fns';
-import * as puppeteer from 'puppeteer';
+import * as puppeteer from 'puppeteer-core';
 
 import {
     TransactionAttachment,
@@ -330,9 +330,18 @@ export class CronService {
             this.logger.log(`Found ${newFiles.length} new files to parse`);
 
             const browser = await puppeteer.launch({
-                executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
+                executablePath: '/usr/bin/chromium',
                 headless: true,
-                args: ['--no-sandbox', '--disable-setuid-sandbox']
+                protocolTimeout: 60000,
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-gpu',
+                    '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas',
+                    '--no-zygote',
+                    '--single-process',
+                ],
             });
 
             let lastProcessedFile = lastFileName;
