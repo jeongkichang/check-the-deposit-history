@@ -330,7 +330,9 @@ export class CronService {
             this.logger.log(`Found ${newFiles.length} new files to parse`);
 
             const browser = await puppeteer.launch({
+                executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
                 headless: true,
+                args: ['--no-sandbox', '--disable-setuid-sandbox']
             });
 
             let lastProcessedFile = lastFileName;

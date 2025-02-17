@@ -23,7 +23,13 @@ RUN apk update && apk add --no-cache \
     freetype \
     harfbuzz \
     ca-certificates \
-    ttf-freefont
+    ttf-freefont \
+    libstdc++ \
+    gcompat \
+    udev
+
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 COPY --from=builder /app/dist ./dist
 COPY package.json yarn.lock ./
