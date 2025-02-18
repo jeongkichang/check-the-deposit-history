@@ -8,46 +8,82 @@ on:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-
     environment:
       name: production
-
     permissions:
       packages: write
 
     steps:
-      # 리포지토리 체크아웃
+      # 1. 리포지토리 체크아웃
       - name: Check out code
         uses: actions/checkout@v3
 
-      # Docker 로그인: GHCR
+      # 2. 변경된 경로 체크(dorny/paths-filter)
+      - name: Check changed paths
+        id: changes
+        uses: dorny/paths-filter@v2
+        with:
+          filters:
+            api:
+              - 'apps/api/**'
+            cron:
+              - 'apps/cron/**'
+            frontend:
+              - 'apps/next-frontend/**'
+            libs:
+              - 'libs/**'
+
+      # 3. Docker 레지스트리(GHCR) 로그인
       - name: Log in to GitHub Container Registry
+        # 아래 어느 디렉터리라도 변경이 있으면 로그인
+        if: |
+          steps.changes.outputs.api == 'true' ||
+          steps.changes.outputs.cron == 'true' ||
+          steps.changes.outputs.frontend == 'true' ||
+          steps.changes.outputs.libs == 'true'
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # 4. apps/api가 변동되거나 libs가 변동되면 API 빌드 & 푸시
       - name: Build & Push API
+        if: steps.changes.outputs.api == 'true' || steps.changes.outputs.libs == 'true'
         run: |
           docker build -t ghcr.io/${{ github.repository }}/api:latest -f apps/api/Dockerfile .
           docker push ghcr.io/${{ github.repository }}/api:latest
 
+      # 5. apps/cron가 변동되거나 libs가 변동되면 Cron 빌드 & 푸시
       - name: Build & Push Cron
+        if: steps.changes.outputs.cron == 'true' || steps.changes.outputs.libs == 'true'
         run: |
           docker build -t ghcr.io/${{ github.repository }}/cron:latest -f apps/cron/Dockerfile .
           docker push ghcr.io/${{ github.repository }}/cron:latest
 
+      # 6. apps/next-frontend가 변동되면 Frontend 빌드 & 푸시
       - name: Build & Push Frontend
+        if: steps.changes.outputs.frontend == 'true'
         run: |
           docker build -t ghcr.io/${{ github.repository }}/frontend:latest -f apps/next-frontend/Dockerfile .
           docker push ghcr.io/${{ github.repository }}/frontend:latest
 
+      # 7. sshpass 설치
       - name: Install sshpass
+        if: |
+          steps.changes.outputs.api == 'true' ||
+          steps.changes.outputs.cron == 'true' ||
+          steps.changes.outputs.frontend == 'true' ||
+          steps.changes.outputs.libs == 'true'
         run: sudo apt-get update && sudo apt-get install -y sshpass
 
-      # Production Server Deploy
+      # 8. 실제 서버 배포(SSH)
       - name: Deploy with sshpass
+        if: |
+          steps.changes.outputs.api == 'true' ||
+          steps.changes.outputs.cron == 'true' ||
+          steps.changes.outputs.frontend == 'true' ||
+          steps.changes.outputs.libs == 'true'
         run: |
           sshpass -p "${{ secrets.SERVER_PASSWORD }}" \
           ssh -o StrictHostKeyChecking=no \
@@ -55,10 +91,10 @@ jobs:
           "
             # (1) /check-the-deposit-history 디렉터리 진입
             cd ./check-the-deposit-history &&
-      
+          
             # (2) 최신 main 브랜치 가져오기
             git pull origin main &&
-      
+          
             # (3) 최신 이미지를 pull & 재실행
             docker compose pull &&
             docker compose up -d
