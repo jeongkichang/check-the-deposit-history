@@ -20,10 +20,10 @@ jobs:
 
       # 2. 변경된 경로 체크(dorny/paths-filter)
       - name: Check changed paths
-        uses: dorny/paths-filter@v2
         id: changes
+        uses: dorny/paths-filter@v2
         with:
-          filters:
+          filters: |
             api:
               - 'apps/api/**'
             cron:
