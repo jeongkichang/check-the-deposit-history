@@ -25,13 +25,13 @@ jobs:
         with:
           filters:
             api:
-              - 'apps/api/**'
+              - './apps/api/**'
             cron:
-              - 'apps/cron/**'
+              - './apps/cron/**'
             frontend:
-              - 'apps/next-frontend/**'
+              - './apps/next-frontend/**'
             libs:
-              - 'libs/**'
+              - './libs/**'
 
       # 3. Docker 레지스트리(GHCR) 로그인
       - name: Log in to GitHub Container Registry
