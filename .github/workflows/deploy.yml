@@ -23,7 +23,7 @@ jobs:
         id: changes
         uses: dorny/paths-filter@v2
         with:
-          filters:
+          filters: |
             api:
               - 'apps/api/**'
             cron:
@@ -31,7 +31,7 @@ jobs:
             frontend:
               - 'apps/next-frontend/**'
             libs:
-              - 'libs/**'
+              - './libs/**'
 
       # 3. Docker 레지스트리(GHCR) 로그인
       - name: Log in to GitHub Container Registry
