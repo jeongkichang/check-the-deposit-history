@@ -73,7 +73,7 @@ jobs:
         if: steps.changes.outputs.api == 'true' || steps.changes.outputs.cron == 'true' || steps.changes.outputs.frontend == 'true' || steps.changes.outputs.libs == 'true'
         run: |
           sshpass -p "${{ secrets.SERVER_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} <<EOF
-            cd /check-the-deposit-history
+            cd ./check-the-deposit-history
             git pull origin main
           
             # libs가 변경되면 api/cron 모두 새로고침이 필요하다고 가정
