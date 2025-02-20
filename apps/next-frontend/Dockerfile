@@ -13,6 +13,9 @@ RUN yarn --cwd ./apps/next-frontend build
 
 # ---------- 2) 런타임 스테이지 ----------
 FROM node:22-alpine
+
+ENV NODE_ENV=production
+
 WORKDIR /app
 
 COPY --from=builder /app/apps/next-frontend/.next ./apps/next-frontend/.next

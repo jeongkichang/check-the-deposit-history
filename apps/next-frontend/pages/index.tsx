@@ -65,8 +65,13 @@ function maskName(name: string): string {
 }
 
 export const getServerSideProps: GetServerSideProps<Props> = async () => {
+    const API_URL =
+        process.env.NODE_ENV === 'production'
+            ? 'http://api:3000'
+            : 'http://localhost:3000';
+
     try {
-        const res = await fetch('http://api:3000/api/settlement');
+        const res = await fetch(`${API_URL}/api/settlement`);
         const data: SettlementData = await res.json();
 
         return { props: { data } };
