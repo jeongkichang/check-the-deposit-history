@@ -2,7 +2,7 @@
   "scripts": {
     "start:api": "nest start api --watch",
     "start:cron": "nest start cron --watch",
-    "build": "yarn build:api && yarn build:cron",
+    "build:all": "pnpm build:api && pnpm build:cron",
     "build:api": "nest build api",
     "build:cron": "nest build cron"
   },
@@ -16,17 +16,14 @@
     "date-fns": "^4.1.0",
     "googleapis": "^144.0.0",
     "mongoose": "^8.9.4",
-    "puppeteer": "^24.2.0",
+    "puppeteer-core": "^24.2.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "libs/*"
-  ],
   "devDependencies": {
     "@nestjs/cli": "^10.4.9",
-    "@types/express": "^5.0.0"
+    "@types/express": "^5.0.0",
+    "@types/puppeteer-core": "^7.0.4"
   }
 }

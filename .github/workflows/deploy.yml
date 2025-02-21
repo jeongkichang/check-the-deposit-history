@@ -46,21 +46,21 @@ jobs:
       - name: Build & Push API
         if: steps.changes.outputs.api == 'true' || steps.changes.outputs.libs == 'true'
         run: |
-          docker build -t ghcr.io/${{ github.repository }}/api:latest -f apps/api/Dockerfile .
+          docker build -t ghcr.io/${{ github.repository }}/api:latest -f Dockerfile-api .
           docker push ghcr.io/${{ github.repository }}/api:latest
 
       # 5. apps/cron가 변동되거나 libs가 변동되면 Cron 빌드 & 푸시
       - name: Build & Push Cron
         if: steps.changes.outputs.cron == 'true' || steps.changes.outputs.libs == 'true'
         run: |
-          docker build -t ghcr.io/${{ github.repository }}/cron:latest -f apps/cron/Dockerfile .
+          docker build -t ghcr.io/${{ github.repository }}/cron:latest -f Dockerfile-cron .
           docker push ghcr.io/${{ github.repository }}/cron:latest
 
       # 6. apps/next-frontend가 변동되면 Frontend 빌드 & 푸시
       - name: Build & Push Frontend
         if: steps.changes.outputs.frontend == 'true'
         run: |
-          docker build -t ghcr.io/${{ github.repository }}/frontend:latest -f apps/next-frontend/Dockerfile .
+          docker build -t ghcr.io/${{ github.repository }}/frontend:latest -f Dockerfile-next-front-end .
           docker push ghcr.io/${{ github.repository }}/frontend:latest
 
       # 7. sshpass 설치
