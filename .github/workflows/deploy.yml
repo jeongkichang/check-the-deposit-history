@@ -60,7 +60,7 @@ jobs:
       - name: Build & Push Frontend
         if: steps.changes.outputs.frontend == 'true'
         run: |
-          docker build -t ghcr.io/${{ github.repository }}/frontend:latest -f Dockerfile-next-front-end .
+          docker build -t ghcr.io/${{ github.repository }}/frontend:latest -f Dockerfile-next-frontend .
           docker push ghcr.io/${{ github.repository }}/frontend:latest
 
       # 7. sshpass 설치
