@@ -122,18 +122,15 @@ export class ApiController {
         if (!period) {
             const now = new Date();
             period = this.getPeriodFromDate(now);
-            this.logger.log(`period param = ${period}`);
-            period = "250217-250221";
             if (!period) {
                 return {
                     message: '주말이거나 해당 주차를 계산할 수 없습니다.',
-                    date: now.toISOString(),
+                    date: now.toString(),
                 };
             }
         }
 
-        const result = await this.apiService.getSettlementStatusForPeriod(period);
-        return result;
+        return await this.apiService.getSettlementStatusForPeriod(period);
     }
 
     private getPeriodFromDate(date: Date): string | undefined {
