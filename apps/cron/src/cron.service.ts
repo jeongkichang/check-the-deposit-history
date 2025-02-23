@@ -519,4 +519,12 @@ export class CronService {
         await this.parseLocalHtmlFiles();
         await this.checkBananaSettlements();
     }
+
+    /**
+     * @todo
+     * 1. select latest banana_unit_price
+     * 2. select all subscription_user
+     * 3. get unitPrice in this week and calculate each subscription_user's cost
+     * 4. send the slack notice message at 09:30 AM
+     */
 }
