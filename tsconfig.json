@@ -8,6 +8,8 @@
     "paths": {
       "@libs/db": ["libs/db/src"],
       "@libs/db/*": ["libs/db/src/*"],
+      "@libs/slack": ["libs/slack/src"],
+      "@libs/slack/*": ["libs/slack/src/*"],
     },
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,

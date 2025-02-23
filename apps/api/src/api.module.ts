@@ -4,6 +4,8 @@ import { ApiService } from './api.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DbModule } from '@libs/db';
 import { ApiController } from "./api.controller";
+import { SlackService } from "@libs/slack";
+
 
 @Module({
     imports: [
@@ -15,6 +17,6 @@ import { ApiController } from "./api.controller";
         DbModule,
     ],
     controllers: [ApiController],
-    providers: [ApiService],
+    providers: [ApiService, SlackService],
 })
 export class ApiModule {}

@@ -8,6 +8,7 @@ import {
     GmailTokenDocument,
 } from '@libs/db/schemas/gmail-token.schema';
 import { ApiService } from "./api.service";
+import { SlackService } from "@libs/slack";
 
 @Controller('api')
 export class ApiController {
@@ -24,6 +25,7 @@ export class ApiController {
         private readonly gmailTokenModel: Model<GmailTokenDocument>,
 
         private readonly apiService: ApiService,
+        private readonly slackService: SlackService,
     ) {}
 
     @Get('gmail/auth')
@@ -103,7 +105,6 @@ export class ApiController {
                 },
             });
         } catch (error) {
-            console.error(error);
             let errMsg = 'unknown error';
             if (error instanceof Error) {
                 errMsg = error.message;
@@ -131,6 +132,28 @@ export class ApiController {
         }
 
         return await this.apiService.getSettlementStatusForPeriod(period);
+    }
+
+    @Get('test-slack')
+    async testSlackEndpoint() {
+        try {
+            const message = '안녕하세요! 이 메시지는 NestJS ApiController에서 Slack으로 보낸 테스트 알람입니다.';
+            await this.slackService.postMessageToChannel(message);
+
+            return {
+                message: 'Slack 메시지를 성공적으로 전송했습니다.',
+                content: message,
+            };
+        } catch (error) {
+            let errMsg = 'unknown error';
+            if (error instanceof Error) {
+                errMsg = error.message;
+            }
+            this.logger.error('Slack 전송 실패', error);
+            return {
+                error: errMsg || 'Slack 전송 중 알 수 없는 오류가 발생했습니다.',
+            };
+        }
     }
 
     private getPeriodFromDate(date: Date): string | undefined {
