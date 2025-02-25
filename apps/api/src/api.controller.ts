@@ -138,7 +138,7 @@ export class ApiController {
     async testSlackEndpoint() {
         try {
             const message = '안녕하세요! 이 메시지는 NestJS ApiController에서 Slack으로 보낸 테스트 알람입니다.';
-            await this.slackService.postMessageToChannel(message);
+            await this.slackService.postMessageToChannel(message, process.env.SLACK_CHANNEL_ID as string);
 
             return {
                 message: 'Slack 메시지를 성공적으로 전송했습니다.',

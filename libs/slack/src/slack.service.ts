@@ -1,31 +1,46 @@
+import { SlackMessage, SlackMessageDocument } from '@libs/db/schemas/slack-message.schema';
 import { Injectable, Logger } from '@nestjs/common';
-import { WebClient } from '@slack/web-api';
+import { InjectModel } from '@nestjs/mongoose';
+import { ChatPostMessageResponse, WebClient } from '@slack/web-api';
+import { Model } from 'mongoose';
 
 @Injectable()
 export class SlackService {
     private readonly logger = new Logger(SlackService.name);
     private readonly slackClient: WebClient;
 
-    constructor() {
+    constructor(
+        @InjectModel(SlackMessage.name)
+        private readonly slackMessageModel: Model<SlackMessageDocument>,
+    ) {
         this.slackClient = new WebClient(process.env.SLACK_BOT_TOKEN);
     }
 
-    async postMessageToChannel(text: string): Promise<void> {
+    async postMessageToChannel(
+        text: string,
+        channel: string,
+    ): Promise<ChatPostMessageResponse> {
         try {
-            const channelId = process.env.SLACK_CHANNEL_ID;
-            if (!channelId) {
-                throw new Error('SLACK_CHANNEL_ID is not defined in .env');
-            }
-
-            await this.slackClient.chat.postMessage({
-                channel: channelId,
-                text,
+            const response = await this.slackClient.chat.postMessage({
+              channel,
+              text,
             });
-
-            this.logger.log(`Slack message sent to channelId=${channelId}`);
-        } catch (error) {
-            this.logger.error('Failed to send Slack message', error);
+      
+            const slackMsg = new this.slackMessageModel({
+              text,
+              channel,
+              ts: response.ts,          // Slack이 반환하는 메시지 타임스탬프
+              rawResponse: response,    // 전체 응답 객체
+            });
+            await slackMsg.save();
+      
+            this.logger.log(
+              `Slack 메시지 전송 & DB 로깅 성공: channel=${channel}, ts=${response.ts}`,
+            );
+            return response;
+          } catch (error) {
+            this.logger.error('Slack 메시지 전송 실패', error);
             throw error;
-        }
+          }
     }
 }

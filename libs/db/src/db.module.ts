@@ -9,6 +9,7 @@ import { TransactionDeposit, TransactionDepositSchema } from "@libs/db/schemas/t
 import { SubscriptionUser, SubscriptionUserSchema } from "@libs/db/schemas/subscription-user.schema";
 import { BananaUnitPrice, BananaUnitPriceSchema } from "@libs/db/schemas/banana-unit-price.schema";
 import { BananaSettlement, BananaSettlementSchema } from "@libs/db/schemas/banana-settlement.schema";
+import { SlackMessage, SlackMessageSchema } from './schemas/slack-message.schema';
 
 @Module({
     imports: [
@@ -63,6 +64,11 @@ import { BananaSettlement, BananaSettlementSchema } from "@libs/db/schemas/banan
                 name: BananaSettlement.name,
                 schema: BananaSettlementSchema,
                 collection: 'banana_settlement',
+            },
+            {
+                name: SlackMessage.name,
+                schema: SlackMessageSchema,
+                collection: 'slack_message',
             },
         ]),
     ],
