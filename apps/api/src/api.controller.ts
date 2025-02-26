@@ -1,4 +1,4 @@
-import {Controller, Get, Logger, Param, Req, Res} from '@nestjs/common';
+import { Controller, Get, Logger, Param, Query, Req, Res } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { google } from 'googleapis';
 import { InjectModel } from '@nestjs/mongoose';
@@ -154,6 +154,24 @@ export class ApiController {
                 error: errMsg || 'Slack 전송 중 알 수 없는 오류가 발생했습니다.',
             };
         }
+    }
+
+    @Get('test-thread')
+    async testThread(
+        @Query('channel') channel: string,
+        @Query('parentTs') parentTs: string,
+    ) {
+        const text = '이 메시지는 테스트 스레드 답글입니다 (DB 로깅).';
+        const result = await this.slackService.postThreadMessage(
+            text,
+            channel,
+            parentTs,
+        );
+
+        return {
+            message: 'Slack 스레드 메시지 전송 성공',
+            response: result,
+        };
     }
 
     private getPeriodFromDate(date: Date): string | undefined {

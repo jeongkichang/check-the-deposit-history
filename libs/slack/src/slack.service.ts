@@ -43,4 +43,35 @@ export class SlackService {
             throw error;
           }
     }
+
+    async postThreadMessage(
+        text: string,
+        channel: string,
+        parentTs: string,
+    ): Promise<ChatPostMessageResponse> {
+        try {
+            const response = await this.slackClient.chat.postMessage({
+                channel,
+                text,
+                thread_ts: parentTs,  // 스레드가 달릴 부모 메시지의 ts
+            });
+
+            // 전송 성공 시, DB 컬렉션에 로깅
+            const slackMsg = new this.slackMessageModel({
+                text,
+                channel,
+                ts: response.ts,
+                rawResponse: response,
+            });
+            await slackMsg.save();
+
+            this.logger.log(
+                `Slack 스레드 메시지 전송 & DB 로깅 성공: channel=${channel}, parentTs=${parentTs}, ts=${response.ts}`,
+            );
+            return response;
+        } catch (error) {
+            this.logger.error('Slack 스레드 메시지 전송 실패', error);
+            throw error;
+        }
+    }
 }
