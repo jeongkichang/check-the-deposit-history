@@ -29,8 +29,8 @@ export class SlackService {
             const slackMsg = new this.slackMessageModel({
               text,
               channel,
-              ts: response.ts,          // Slack이 반환하는 메시지 타임스탬프
-              rawResponse: response,    // 전체 응답 객체
+              ts: response.ts,
+              rawResponse: response,
             });
             await slackMsg.save();
       
@@ -53,7 +53,7 @@ export class SlackService {
             const response = await this.slackClient.chat.postMessage({
                 channel,
                 text,
-                thread_ts: parentTs,  // 스레드가 달릴 부모 메시지의 ts
+                thread_ts: parentTs,
             });
 
             // 전송 성공 시, DB 컬렉션에 로깅
