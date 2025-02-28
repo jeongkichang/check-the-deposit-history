@@ -3,6 +3,23 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { ChatPostMessageResponse, WebClient } from '@slack/web-api';
 import { Model } from 'mongoose';
+import { BananaUnitPrice, BananaUnitPriceDocument } from "@libs/db/schemas/banana-unit-price.schema";
+import { SubscriptionUser, SubscriptionUserDocument } from "@libs/db/schemas/subscription-user.schema";
+
+interface BankAccountInfo {
+    accountNumber: string;
+    bankName: string;
+    accountHolder: string;
+}
+
+interface BananaSettlement {
+    emoji?: string;
+    accountInfo: BankAccountInfo;
+    smallPurchasers: string[];
+    smallPrice: number;
+    largePurchasers: string[];
+    largePrice: number;
+}
 
 @Injectable()
 export class SlackService {
@@ -12,9 +29,21 @@ export class SlackService {
     constructor(
         @InjectModel(SlackMessage.name)
         private readonly slackMessageModel: Model<SlackMessageDocument>,
+
+        @InjectModel(BananaUnitPrice.name)
+        private readonly bananaUnitPriceModel: Model<BananaUnitPriceDocument>,
+
+        @InjectModel(SubscriptionUser.name)
+        private readonly subscriptionUserModel: Model<SubscriptionUserDocument>,
     ) {
         this.slackClient = new WebClient(process.env.SLACK_BOT_TOKEN);
     }
+
+    private readonly defaultAccountInfo: BankAccountInfo = {
+        accountNumber: '130012-56-051196',
+        bankName: '농협',
+        accountHolder: '정기창',
+    };
 
     async postMessageToChannel(
         text: string,
@@ -71,6 +100,38 @@ export class SlackService {
             return response;
         } catch (error) {
             this.logger.error('Slack 스레드 메시지 전송 실패', error);
+            throw error;
+        }
+    }
+
+    async sendBananaSettlementMessage(
+        channel: string,
+        settlement: BananaSettlement,
+    ): Promise<ChatPostMessageResponse> {
+        try {
+            const formatPrice = (price: number): string => {
+                return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            };
+
+            const emoji = ':mkk08:';
+            const { accountNumber, bankName, accountHolder } = settlement.accountInfo;
+            const smallPrice = formatPrice(settlement.smallPrice);
+            const largePrice = formatPrice(settlement.largePrice);
+
+            const smallPurchasersText = settlement.smallPurchasers.join('\n');
+            const largePurchasersText = settlement.largePurchasers.join('\n');
+
+            const messageText = `바나나 자리에 나눠드렸습니다. ${emoji}\n` +
+                `${accountNumber}\n` +
+                `${bankName} ${accountHolder}\n` +
+                `3개 : ${smallPrice}\n` +
+                `${smallPurchasersText}\n` +
+                `4개 : ${largePrice}\n` +
+                `${largePurchasersText}`;
+
+            return await this.postMessageToChannel(messageText, channel);
+        } catch (error) {
+            this.logger.error('바나나 정산 메시지 전송 실패', error);
             throw error;
         }
     }
