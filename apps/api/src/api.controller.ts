@@ -174,6 +174,36 @@ export class ApiController {
         };
     }
 
+    @Get('send-banana-notice')
+    async sendBananaNotice() {
+        try {
+            // 슬랙 채널 ID를 환경 변수에서 가져오기
+            const channelId = process.env.SLACK_CHANNEL_ID;
+            
+            if (!channelId) {
+                throw new Error('SLACK_CHANNEL_ID 환경 변수가 설정되지 않았습니다.');
+            }
+            
+            // 바나나 정산 메시지 전송
+            const response = await this.slackService.sendBananaSettlementMessage(channelId);
+            
+            return {
+                message: '바나나 정산 메시지를 성공적으로 전송했습니다.',
+                ts: response.ts,
+                channel: channelId
+            };
+        } catch (error) {
+            let errMsg = 'unknown error';
+            if (error instanceof Error) {
+                errMsg = error.message;
+            }
+            this.logger.error('바나나 정산 메시지 전송 실패', error);
+            return {
+                error: errMsg || '바나나 정산 메시지 전송 중 알 수 없는 오류가 발생했습니다.',
+            };
+        }
+    }
+
     private getPeriodFromDate(date: Date): string | undefined {
         const dayOfWeek = date.getDay();
         if (dayOfWeek === 0 || dayOfWeek === 6) {
