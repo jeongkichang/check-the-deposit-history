@@ -10,6 +10,8 @@
       "@libs/db/*": ["libs/db/src/*"],
       "@libs/slack": ["libs/slack/src"],
       "@libs/slack/*": ["libs/slack/src/*"],
+      "@libs/common/utils": ["libs/common/src/utils"],
+      "@libs/common/utils/*": ["libs/common/src/utils/*"],
     },
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,

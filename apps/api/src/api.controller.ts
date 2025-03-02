@@ -9,6 +9,7 @@ import {
 } from '@libs/db/schemas/gmail-token.schema';
 import { ApiService } from "./api.service";
 import { SlackService } from "@libs/slack";
+import { getPeriodFromDate } from '@libs/common/utils/date-utils'; 
 
 @Controller('api')
 export class ApiController {
@@ -122,7 +123,7 @@ export class ApiController {
 
         if (!period) {
             const now = new Date();
-            period = this.getPeriodFromDate(now);
+            period = getPeriodFromDate(now);
             if (!period) {
                 return {
                     message: '주말이거나 해당 주차를 계산할 수 없습니다.',
@@ -202,31 +203,5 @@ export class ApiController {
                 error: errMsg || '바나나 정산 메시지 전송 중 알 수 없는 오류가 발생했습니다.',
             };
         }
-    }
-
-    private getPeriodFromDate(date: Date): string | undefined {
-        const dayOfWeek = date.getDay();
-        if (dayOfWeek === 0 || dayOfWeek === 6) {
-            return undefined;
-        }
-
-        const monday = new Date(date);
-        monday.setHours(0, 0, 0, 0);
-        monday.setDate(monday.getDate() - (dayOfWeek - 1));
-
-        const friday = new Date(monday);
-        friday.setDate(friday.getDate() + 4);
-
-        const mondayStr = this.toYYMMDD(monday);
-        const fridayStr = this.toYYMMDD(friday);
-
-        return `${mondayStr}-${fridayStr}`;
-    }
-
-    private toYYMMDD(date: Date) {
-        const yy = (date.getFullYear() % 100).toString().padStart(2, '0');
-        const mm = (date.getMonth() + 1).toString().padStart(2, '0');
-        const dd = date.getDate().toString().padStart(2, '0');
-        return yy + mm + dd;
     }
 }
