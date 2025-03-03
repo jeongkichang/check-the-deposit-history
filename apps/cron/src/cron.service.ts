@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { format } from 'date-fns';
 import * as puppeteer from 'puppeteer-core';
+import { getPeriodFromDate } from '@libs/common/utils/date-utils';
 
 import {
     TransactionAttachment,
@@ -442,7 +443,7 @@ export class CronService {
                 continue;
             }
 
-            const period = this.getPeriodFromDate(depositTime);
+            const period = getPeriodFromDate(depositTime);
             if (!period) {
                 this.logger.warn(
                     `Deposit on weekend or no matching period => depositTime=${depositTime}`,
@@ -485,32 +486,6 @@ export class CronService {
         }
 
         this.logger.log('Banana settlement check done.');
-    }
-
-    private getPeriodFromDate(date: Date): string | null {
-        const dayOfWeek = date.getDay();
-        if (dayOfWeek === 0 || dayOfWeek === 6) {
-            return null;
-        }
-
-        const monday = new Date(date);
-        monday.setHours(0, 0, 0, 0);   // 시간,분,초,밀리초 0으로 세팅(선택)
-        monday.setDate(monday.getDate() - (dayOfWeek - 1));
-
-        const friday = new Date(monday);
-        friday.setDate(friday.getDate() + 4);
-
-        const mondayStr = this.toYYMMDD(monday);
-        const fridayStr = this.toYYMMDD(friday);
-
-        return `${mondayStr}-${fridayStr}`;
-    }
-
-    private toYYMMDD(date: Date): string {
-        const yy = (date.getFullYear() % 100).toString().padStart(2, '0');
-        const mm = (date.getMonth() + 1).toString().padStart(2, '0');
-        const dd = date.getDate().toString().padStart(2, '0');
-        return yy + mm + dd;
     }
 
     @Cron(CronExpression.EVERY_5_MINUTES)
