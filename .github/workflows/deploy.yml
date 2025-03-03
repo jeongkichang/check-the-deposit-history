@@ -75,25 +75,28 @@ jobs:
           sshpass -p "${{ secrets.SERVER_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} <<EOF
             cd ./check-the-deposit-history
             git pull origin main
-          
+            
+            # 도커 이미지 업데이트 전 프루닝 실행
+            docker system prune -f
+            
             # libs가 변경되면 api/cron 모두 새로고침이 필요하다고 가정
             if [ "${{ steps.changes.outputs.libs }}" = "true" ]; then
               docker compose pull api-service cron-service
               docker compose up -d api-service cron-service
             fi
-          
+            
             # api 변경 여부
             if [ "${{ steps.changes.outputs.api }}" = "true" ] && [ "${{ steps.changes.outputs.libs }}" != "true" ]; then
               docker compose pull api-service
               docker compose up -d api-service
             fi
-          
+            
             # cron 변경 여부
             if [ "${{ steps.changes.outputs.cron }}" = "true" ] && [ "${{ steps.changes.outputs.libs }}" != "true" ]; then
               docker compose pull cron-service
               docker compose up -d cron-service
             fi
-          
+            
             # frontend 변경 여부
             if [ "${{ steps.changes.outputs.frontend }}" = "true" ]; then
               docker compose pull frontend-service
