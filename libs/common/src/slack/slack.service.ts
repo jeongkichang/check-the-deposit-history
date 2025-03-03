@@ -5,21 +5,8 @@ import { ChatPostMessageArguments, ChatPostMessageResponse, WebClient } from '@s
 import { Model } from 'mongoose';
 import { BananaUnitPrice, BananaUnitPriceDocument } from "@libs/db/schemas/banana-unit-price.schema";
 import { SubscriptionUser, SubscriptionUserDocument } from "@libs/db/schemas/subscription-user.schema";
-
-interface BankAccountInfo {
-    accountNumber: string;
-    bankName: string;
-    accountHolder: string;
-}
-
-interface BananaSettlement {
-    emoji?: string;
-    accountInfo: BankAccountInfo;
-    smallPurchasers: string[];
-    smallPrice: number;
-    largePurchasers: string[];
-    largePrice: number;
-}
+import { BankAccountInfo } from './interfaces/bank-account.interface';
+import { getPeriodFromDate } from '@libs/common/utils';
 
 @Injectable()
 export class SlackService {
@@ -129,6 +116,10 @@ export class SlackService {
             // 실제 필드명에 맞게 가격 변수 설정
             const unitPrice = latestUnitPrice.unitPrice;
             
+            // 현재 날짜로부터 정산 기간 계산
+            const currentDate = new Date();
+            const period = getPeriodFromDate(currentDate);
+            
             // 2. 모든 구독 사용자 가져오기
             const allUsers = await this.subscriptionUserModel.find().exec();
             
@@ -173,10 +164,11 @@ export class SlackService {
                 .map(name => `  ○ ${removeLastName(name)}님`)
                 .join('\n');
 
-            // 슬랙 메시지 파라미터
+            // 슬랙 메시지 파라미터 - 기간 정보 추가
+            const periodText = period ? `[${period}] ` : '';
             const params = {
                 channel,
-                text: `안녕하세요. :)\n바나나 자리에 나눠드렸습니다. :mkk08:\n\n${accountNumber}\n${bankName} ${accountHolder}\n\n• 3개 : ${formatPrice(smallPrice)}\n${smallPurchasersText}\n\n• 4개 : ${formatPrice(largePrice)}\n${largePurchasersText}`,
+                text: `${periodText}\n안녕하세요. :)\n바나나 자리에 나눠드렸습니다. :mkk08:\n\n${accountNumber}\n${bankName} ${accountHolder}\n\n• 3개 : ${formatPrice(smallPrice)}\n${smallPurchasersText}\n\n• 4개 : ${formatPrice(largePrice)}\n${largePurchasersText}`,
                 mrkdwn: true,
                 parse: 'full',
                 attachments: []
@@ -185,22 +177,69 @@ export class SlackService {
             // WebClient 직접 호출하여 메시지 전송
             const response = await this.slackClient.chat.postMessage(params);
 
-            // DB에 메시지 로깅
+            // DB에 메시지 로깅 - 기간 정보 추가
             const slackMsg = new this.slackMessageModel({
                 text: params.text,
                 channel,
                 ts: response.ts,
+                period: period, // 기간 정보 저장
                 rawResponse: response,
             });
             await slackMsg.save();
 
             this.logger.log(
-                `바나나 정산 메시지 전송 & DB 로깅 성공: channel=${channel}, ts=${response.ts}`,
+                `바나나 정산 메시지 전송 & DB 로깅 성공: channel=${channel}, period=${period}, ts=${response.ts}`,
             );
             
             return response;
         } catch (error) {
             this.logger.error('바나나 정산 메시지 전송 실패', error);
+            throw error;
+        }
+    }
+
+    // 특정 기간의 정산 메시지 찾기
+    async findSettlementMessageByPeriod(period: string): Promise<SlackMessageDocument | null> {
+        try {
+            // 정규식 특수 문자를 이스케이프 처리
+            const escapedPeriod = period.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+            const periodPattern = `\\[${escapedPeriod}\\]`;
+            
+            this.logger.debug(`정산 메시지 검색 패턴: ${periodPattern}`);
+            
+            return await this.slackMessageModel.findOne({ 
+                text: { $regex: periodPattern, $options: 'i' } 
+            }).exec();
+        } catch (error) {
+            this.logger.error(`기간(${period})으로 정산 메시지 검색 실패`, error);
+            throw error;
+        }
+    }
+
+    // 입금 확인 메시지 전송
+    async sendPaymentConfirmation(
+        userName: string,
+        parentMessageTs: string,
+        channel: string
+    ): Promise<ChatPostMessageResponse> {
+        try {
+            // 이름에서 성을 제거하는 함수
+            const removeLastName = (name: string): string => {
+                // 한글 이름의 첫 글자(성)를 제거하고 나머지 이름만 반환
+                return name.substring(1);
+            };
+            
+            // 성을 제거한 이름으로 메시지 생성
+            const nameWithoutLastName = removeLastName(userName);
+            const confirmationText = `${nameWithoutLastName}님이 입금 완료하셨습니다. ✅`;
+            
+            return await this.postThreadMessage(
+                confirmationText,
+                channel,
+                parentMessageTs
+            );
+        } catch (error) {
+            this.logger.error(`입금 확인 메시지 전송 실패: ${userName}`, error);
             throw error;
         }
     }

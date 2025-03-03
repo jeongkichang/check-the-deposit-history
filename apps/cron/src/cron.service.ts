@@ -8,6 +8,7 @@ import * as path from 'path';
 import { format } from 'date-fns';
 import * as puppeteer from 'puppeteer-core';
 import { getPeriodFromDate } from '@libs/common/utils/date-utils';
+import { SlackService } from '@libs/common';
 
 import {
     TransactionAttachment,
@@ -98,6 +99,8 @@ export class CronService {
 
         @InjectModel(BananaSettlement.name)
         private readonly settlementModel: Model<BananaSettlementDocument>,
+
+        private readonly slackService: SlackService,
     ) {}
 
     async fetchTransactionMails() {
@@ -469,7 +472,8 @@ export class CronService {
 
             const isSettled = depositAmount >= requiredAmount;
 
-            await this.settlementModel.findOneAndUpdate(
+            // 정산 정보 업데이트 또는 생성
+            const settlementDoc = await this.settlementModel.findOneAndUpdate(
                 { userName, period },
                 {
                     userName,
@@ -483,6 +487,32 @@ export class CronService {
             );
 
             this.logger.log(`Settle: ${userName}/${period} deposit=${depositAmount} needed=${requiredAmount} => isSettled=${isSettled}`);
+
+            try {
+                // 해당 기간의 정산 메시지 찾기
+                const settlementMessage = await this.slackService.findSettlementMessageByPeriod(period);
+                
+                if (settlementMessage && settlementMessage.ts && settlementMessage.channel) {
+                    // 입금 완료 메시지 전송
+                    await this.slackService.sendPaymentConfirmation(
+                        userName,
+                        settlementMessage.ts,
+                        settlementMessage.channel
+                    );
+                    
+                    // 알림 전송 상태 업데이트
+                    await this.settlementModel.updateOne(
+                        { _id: settlementDoc._id },
+                        { notificationSent: true }
+                    );
+                    
+                    this.logger.log(`Payment confirmation sent for ${userName} in period ${period}`);
+                } else {
+                    this.logger.warn(`Settlement message not found for period ${period}`);
+                }
+            } catch (error) {
+                this.logger.error(`Failed to send payment confirmation for ${userName}`, error);
+            }
         }
 
         this.logger.log('Banana settlement check done.');
@@ -496,10 +526,31 @@ export class CronService {
     }
 
     /**
-     * @todo
-     * 1. select latest banana_unit_price
-     * 2. select all subscription_user
-     * 3. get unitPrice in this week and calculate each subscription_user's cost
-     * 4. send the slack notice message at 09:30 AM
+     * 매주 월요일 오전 9시 30분에 바나나 정산 메시지 전송
+     * 크론 표현식: 0 30 9 * * 1 (초 분 시 일 월 요일)
      */
+    @Cron('0 30 9 * * 1')
+    async sendWeeklyBananaSettlementNotice() {
+        this.logger.log('주간 바나나 정산 메시지 전송 작업 시작');
+        
+        try {
+            // 슬랙 채널 ID를 환경 변수에서 가져오기
+            const channelId = process.env.SLACK_CHANNEL_ID;
+            
+            if (!channelId) {
+                throw new Error('SLACK_CHANNEL_ID 환경 변수가 설정되지 않았습니다.');
+            }
+            
+            // 바나나 정산 메시지 전송
+            const response = await this.slackService.sendBananaSettlementMessage(channelId);
+            
+            this.logger.log(`바나나 정산 메시지 전송 성공: ts=${response.ts}, channel=${channelId}`);
+        } catch (error) {
+            let errMsg = 'unknown error';
+            if (error instanceof Error) {
+                errMsg = error.message;
+            }
+            this.logger.error(`바나나 정산 메시지 전송 실패: ${errMsg}`, error);
+        }
+    }
 }

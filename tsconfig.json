@@ -8,10 +8,12 @@
     "paths": {
       "@libs/db": ["libs/db/src"],
       "@libs/db/*": ["libs/db/src/*"],
-      "@libs/slack": ["libs/slack/src"],
-      "@libs/slack/*": ["libs/slack/src/*"],
+      "@libs/common": ["libs/common/src"],
+      "@libs/common/*": ["libs/common/src/*"],
+      "@libs/slack": ["libs/common/src/slack"],
+      "@libs/slack/*": ["libs/common/src/slack/*"],
       "@libs/common/utils": ["libs/common/src/utils"],
-      "@libs/common/utils/*": ["libs/common/src/utils/*"],
+      "@libs/common/utils/*": ["libs/common/src/utils/*"]
     },
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,

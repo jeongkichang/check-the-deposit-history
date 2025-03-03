@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { CronService } from './cron.service';
 import { DbModule } from "@libs/db";
 import { ScheduleModule } from '@nestjs/schedule';
+import { SlackModule } from '@libs/common';
 
 @Module({
     imports: [
@@ -12,6 +13,7 @@ import { ScheduleModule } from '@nestjs/schedule';
         }),
         DbModule,
         ScheduleModule.forRoot(),
+        SlackModule,
     ],
     providers: [CronService],
 })

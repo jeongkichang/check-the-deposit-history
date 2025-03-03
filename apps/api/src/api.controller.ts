@@ -8,7 +8,7 @@ import {
     GmailTokenDocument,
 } from '@libs/db/schemas/gmail-token.schema';
 import { ApiService } from "./api.service";
-import { SlackService } from "@libs/slack";
+import { SlackService } from "@libs/common/slack";
 import { getPeriodFromDate } from '@libs/common/utils/date-utils'; 
 
 @Controller('api')
