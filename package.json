@@ -2,6 +2,9 @@
   "scripts": {
     "start:api": "nest start api --watch",
     "start:cron": "nest start cron --watch",
+    "start:banana": "cd apps/banana-settlement-app && pnpm start",
+    "setup:banana": "cd apps/banana-settlement-app && pnpm install",
+    "dev": "concurrently \"pnpm start:api\" \"pnpm start:banana\"",
     "build:all": "pnpm build:api && pnpm build:cron",
     "build:api": "nest build api",
     "build:cron": "nest build cron"
@@ -25,6 +28,7 @@
   "devDependencies": {
     "@nestjs/cli": "^10.4.9",
     "@types/express": "^5.0.0",
-    "@types/puppeteer-core": "^7.0.4"
+    "@types/puppeteer-core": "^7.0.4",
+    "concurrently": "^8.2.2"
   }
 }

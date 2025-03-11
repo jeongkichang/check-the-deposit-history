@@ -58,6 +58,15 @@ const IconCheck = styled.div`
   }
 `;
 
+// SVG로 성공 아이콘 구현
+const SuccessCheckSVG = () => (
+  <svg width="70" height="70" viewBox="0 0 70 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="35" cy="35" r="35" fill="rgba(0, 230, 0, 0.15)" />
+    <circle cx="35" cy="35" r="17.5" stroke="#00E600" strokeWidth="5.5" />
+    <path d="M26 35L33 42L44 28" stroke="#00E600" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 const Title = styled.h1`
   font-family: 'Pretendard', sans-serif;
   font-weight: 700;
@@ -97,8 +106,7 @@ const SuccessView: React.FC<SuccessViewProps> = ({ period }) => {
     <Container>
       <Content>
         <IconContainer>
-          <IconBackground />
-          <IconCheck />
+          <SuccessCheckSVG />
         </IconContainer>
         <Title>바나나 구독 정산 완료</Title>
         <Message>

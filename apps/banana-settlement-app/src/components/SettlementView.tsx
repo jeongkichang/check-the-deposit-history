@@ -30,6 +30,7 @@ const IconContainer = styled.div`
   justify-content: center;
   align-items: center;
   position: relative;
+  overflow: hidden;
 `;
 
 const CoinIcon = styled.div`
@@ -37,7 +38,40 @@ const CoinIcon = styled.div`
   height: 24px;
   background-color: #FFAA00;
   border-radius: 50%;
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 10px;
+    height: 2px;
+    background-color: rgba(255, 255, 255, 0.6);
+    border-radius: 1px;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: rgba(255, 180, 0, 0.7);
+  }
 `;
+
+// 코인 이미지를 SVG로 구현
+const CoinSVG = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="12" r="12" fill="#FFAA00" />
+    <path d="M7 12H17" stroke="#FFC44D" strokeWidth="2" strokeLinecap="round" />
+    <circle cx="12" cy="8" r="2" fill="#FFB800" fillOpacity="0.7" />
+  </svg>
+);
 
 const Title = styled.h1`
   font-family: 'Pretendard', sans-serif;
@@ -152,13 +186,18 @@ const maskName = (name: string): string => {
 };
 
 // 유저 목록 컴포넌트
-const UserList: React.FC<{ users: User[] }> = ({ users }) => {
+interface UserListProps {
+  users: User[];
+  subscriptionCount: 3 | 4; // 구독 개수: 3개 또는 4개
+}
+
+const UserList: React.FC<UserListProps> = ({ users, subscriptionCount }) => {
   const settledCount = users.filter(user => user.isSettled).length;
   
   return (
     <>
       <SectionHeader>
-        <SectionTitle>{users.length}개 구독</SectionTitle>
+        <SectionTitle>{subscriptionCount}개 구독</SectionTitle>
         <Counter>
           <Count active>{settledCount}</Count>
           <Count>/</Count>
@@ -187,7 +226,7 @@ const SettlementView: React.FC<SettlementViewProps> = ({ data }) => {
     <Container>
       <Header>
         <IconContainer>
-          <CoinIcon />
+          <CoinSVG />
         </IconContainer>
         <Title>바나나 구독 정산</Title>
         <PeriodTag>
@@ -196,10 +235,10 @@ const SettlementView: React.FC<SettlementViewProps> = ({ data }) => {
       </Header>
       <Content>
         <Section>
-          <UserList users={data.three} />
+          <UserList users={data.three} subscriptionCount={3} />
         </Section>
         <Section>
-          <UserList users={data.four} />
+          <UserList users={data.four} subscriptionCount={4} />
         </Section>
       </Content>
     </Container>
