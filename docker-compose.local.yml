@@ -1,0 +1,51 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile-api
+    container_name: api-service
+    ports:
+      - "3000:3000"
+    env_file:
+        - .env
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./data:/app/data
+
+  cron:
+    build:
+      context: .
+      dockerfile: Dockerfile-cron
+    container_name: cron-service
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./data:/app/data
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile-next-frontend
+    container_name: frontend-service
+    ports:
+      - "3001:3001"
+    environment:
+      API_URL: http://api-service:3000
+      NODE_ENV: development
+
+  banana-settlement-app:
+    build:
+      context: .
+      dockerfile: Dockerfile-banana-settlement-app
+    container_name: banana-settlement-app
+    ports:
+      - "3002:3000"
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      API_URL: http://api-service:3000 
