@@ -10,6 +10,13 @@ import {
 import { ApiService } from "./api.service";
 import { SlackService } from "@libs/common/slack";
 import { getPeriodFromDate } from '@libs/common/utils/date-utils'; 
+import * as fs from 'fs';
+import * as path from 'path';
+import { format } from 'date-fns';
+import {
+    TransactionAttachment,
+    TransactionAttachmentDocument,
+} from '@libs/db/schemas/transaction-attachment.schema';
 
 @Controller('api')
 export class ApiController {
@@ -25,9 +32,225 @@ export class ApiController {
         @InjectModel(GmailToken.name)
         private readonly gmailTokenModel: Model<GmailTokenDocument>,
 
+        @InjectModel(TransactionAttachment.name)
+        private readonly attachModel: Model<TransactionAttachmentDocument>,
+
         private readonly apiService: ApiService,
         private readonly slackService: SlackService,
     ) {}
+
+    @Get('fetch-latest-transaction')
+    async fetchLatestTransaction(@Res() res: Response) {
+        this.logger.log('가장 최근 입출금 내역 이메일 조회 시작');
+
+        try {
+            // 1. Gmail 토큰 가져오기
+            const tokenDoc = await this.gmailTokenModel.findOne().exec();
+            if (!tokenDoc) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Gmail 토큰이 없습니다. 먼저 인증을 진행해주세요.',
+                });
+            }
+
+            // 2. 인증 설정
+            this.oauth2Client.setCredentials({
+                access_token: tokenDoc.accessToken,
+                refresh_token: tokenDoc.refreshToken,
+                scope: tokenDoc.scope,
+                token_type: tokenDoc.tokenType,
+                expiry_date: tokenDoc.expiryDate,
+            });
+
+            // 3. 토큰 만료 체크 및 갱신
+            const now = Date.now();
+            const expiryDate = tokenDoc.expiryDate || 0;
+            if (now >= expiryDate - 60_000) {
+                this.logger.log('Access token 만료 또는 만료 임박. 갱신 중...');
+
+                try {
+                    const { credentials } = await this.oauth2Client.refreshAccessToken();
+
+                    if (!credentials.access_token) {
+                        return res.status(500).json({
+                            success: false,
+                            message: '액세스 토큰 갱신 실패',
+                        });
+                    }
+
+                    tokenDoc.accessToken = credentials.access_token;
+                    tokenDoc.refreshToken = credentials.refresh_token || tokenDoc.refreshToken;
+                    tokenDoc.scope = credentials.scope || tokenDoc.scope;
+                    tokenDoc.tokenType = credentials.token_type || tokenDoc.tokenType;
+                    tokenDoc.expiryDate = credentials.expiry_date || tokenDoc.expiryDate;
+                    await tokenDoc.save();
+
+                    this.oauth2Client.setCredentials({
+                        access_token: tokenDoc.accessToken,
+                        refresh_token: tokenDoc.refreshToken,
+                        scope: tokenDoc.scope,
+                        token_type: tokenDoc.tokenType,
+                        expiry_date: tokenDoc.expiryDate,
+                    });
+
+                    this.logger.log('액세스 토큰 갱신 성공');
+                } catch (error) {
+                    this.logger.error('토큰 갱신 중 오류 발생', error);
+                    return res.status(500).json({
+                        success: false,
+                        message: '토큰 갱신 실패',
+                        error: error instanceof Error ? error.message : '알 수 없는 오류',
+                    });
+                }
+            }
+
+            // 4. Gmail API 초기화
+            const gmail = google.gmail({ version: 'v1', auth: this.oauth2Client });
+
+            // 5. 입출금 내역 관련 이메일 검색 (최신 1개만)
+            const query = `subject:"농협에서 제공하는 입출금 거래내역 입니다." has:attachment`;
+            const listRes = await gmail.users.messages.list({
+                userId: 'me',
+                q: query,
+                maxResults: 1,
+            });
+
+            const messages = listRes.data.messages || [];
+            if (messages.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: '입출금 내역 이메일을 찾을 수 없습니다.',
+                });
+            }
+
+            // 6. 이메일 정보 가져오기
+            const message = messages[0];
+            const msgRes = await gmail.users.messages.get({
+                userId: 'me',
+                id: message.id!,
+            });
+
+            const payload = msgRes.data.payload;
+            if (!payload) {
+                return res.status(404).json({
+                    success: false,
+                    message: '이메일 내용을 찾을 수 없습니다.',
+                });
+            }
+
+            // 7. 이메일 헤더 정보 추출
+            const headers = payload.headers || [];
+            const subject = headers.find(h => h.name === 'Subject')?.value || '';
+            const from = headers.find(h => h.name === 'From')?.value || '';
+            const dateStr = headers.find(h => h.name === 'Date')?.value || '';
+            const receivedDate = dateStr ? new Date(dateStr) : new Date();
+
+            // 8. 첨부파일 다운로드
+            const parts = payload.parts || [];
+            const attachments = [];
+
+            for (const part of parts) {
+                if (part.filename && part.body?.attachmentId) {
+                    const attachRes = await gmail.users.messages.attachments.get({
+                        userId: 'me',
+                        messageId: message.id!,
+                        id: part.body.attachmentId,
+                    });
+                    const attachmentData = attachRes.data.data;
+
+                    if (!attachmentData) continue;
+
+                    // 첨부파일 디코딩
+                    const buffer = this.decodeBase64(attachmentData);
+
+                    // 디렉토리 생성
+                    const dataDir = path.join(process.cwd(), 'data');
+                    if (!fs.existsSync(dataDir)) {
+                        fs.mkdirSync(dataDir, { recursive: true });
+                    }
+
+                    // 파일명 생성
+                    const baseName = format(receivedDate, 'yyyyMMddHHmmss');
+                    const ext = this.getExtensionFromFilename(part.filename)
+                        || this.getExtensionFromMimeType(part.mimeType || '');
+                    let finalName = baseName + (ext ? '.' + ext : '');
+                    let finalPath = path.join(dataDir, finalName);
+
+                    // 파일명 중복 방지
+                    let counter = 1;
+                    while (fs.existsSync(finalPath)) {
+                        finalName = `${baseName}_${counter}${ext ? '.' + ext : ''}`;
+                        finalPath = path.join(dataDir, finalName);
+                        counter++;
+                    }
+
+                    // 파일 저장
+                    fs.writeFileSync(finalPath, buffer);
+
+                    // DB에 첨부파일 정보 저장
+                    const attachDoc = new this.attachModel({
+                        messageId: message.id,
+                        subject,
+                        from,
+                        receivedDate,
+                        filename: finalName,
+                        filePath: `data/${finalName}`,
+                        mimeType: part.mimeType,
+                    });
+                    await attachDoc.save();
+
+                    attachments.push({
+                        filename: finalName,
+                        filePath: `data/${finalName}`,
+                        mimeType: part.mimeType,
+                    });
+
+                    this.logger.log(`첨부파일 저장 성공: ${finalName}`);
+                }
+            }
+
+            // 9. 응답 반환
+            return res.status(200).json({
+                success: true,
+                message: '최신 입출금 내역 이메일 처리 완료',
+                email: {
+                    id: message.id,
+                    subject,
+                    from,
+                    receivedDate,
+                },
+                attachments,
+            });
+        } catch (error) {
+            this.logger.error('입출금 내역 이메일 처리 중 오류 발생', error);
+            return res.status(500).json({
+                success: false,
+                message: '입출금 내역 이메일 처리 중 오류 발생',
+                error: error instanceof Error ? error.message : '알 수 없는 오류',
+            });
+        }
+    }
+
+    // Base64 디코딩 유틸리티 함수
+    private decodeBase64(base64url?: string): Buffer {
+        if (!base64url) return Buffer.from([]);
+        const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+        return Buffer.from(base64, 'base64');
+    }
+
+    // 파일명에서 확장자 추출 함수
+    private getExtensionFromFilename(filename: string): string {
+        const splitted = filename.split('.');
+        if (splitted.length < 2) return '';
+        return splitted[splitted.length - 1];
+    }
+
+    // MIME 타입에서 확장자 추출 함수
+    private getExtensionFromMimeType(mime: string): string {
+        const slashIndex = mime.indexOf('/');
+        if (slashIndex === -1) return '';
+        return mime.substring(slashIndex + 1);
+    }
 
     @Get('gmail/auth')
     async authGmail(
