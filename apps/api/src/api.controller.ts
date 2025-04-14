@@ -1,6 +1,6 @@
 import { Controller, Get, Logger, Param, Query, Req, Res } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { google } from 'googleapis';
+import { google, Auth } from 'googleapis';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
@@ -145,9 +145,21 @@ export class ApiController {
             const dateStr = headers.find(h => h.name === 'Date')?.value || '';
             const receivedDate = dateStr ? new Date(dateStr) : new Date();
 
-            // 8. 첨부파일 다운로드
+            // 8. Google Drive API를 위한 서비스 계정 인증 설정
+            const jwtClient = new google.auth.JWT(
+                process.env.GOOGLE_CLIENT_EMAIL,
+                undefined,
+                process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+                ['https://www.googleapis.com/auth/drive']
+            );
+
+            await jwtClient.authorize();
+            const drive = google.drive({ version: 'v3', auth: jwtClient });
+
+            // 9. 첨부파일 다운로드 및 Google Drive 업로드
             const parts = payload.parts || [];
             const attachments = [];
+            const uploadResults = [];
 
             for (const part of parts) {
                 if (part.filename && part.body?.attachmentId) {
@@ -199,6 +211,56 @@ export class ApiController {
                     });
                     await attachDoc.save();
 
+                    // Google Drive에 파일 업로드
+                    try {
+                        const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+                        
+                        const fileMetadata = {
+                            name: finalName,
+                            parents: folderId ? [folderId] : [],
+                        };
+
+                        const media = {
+                            mimeType: part.mimeType || 'application/octet-stream',
+                            body: fs.createReadStream(finalPath),
+                        };
+
+                        const driveResponse = await drive.files.create({
+                            requestBody: fileMetadata,
+                            media: media,
+                            fields: 'id,name,webViewLink',
+                        });
+
+                        // 업로드 결과 저장
+                        if (driveResponse && driveResponse.data) {
+                            const uploadResult = {
+                                fileId: driveResponse.data.id,
+                                fileName: driveResponse.data.name,
+                                webViewLink: driveResponse.data.webViewLink,
+                            };
+                            
+                            uploadResults.push(uploadResult);
+
+                            // TransactionAttachment 문서 업데이트 - Google Drive 정보 추가
+                            await this.attachModel.updateOne(
+                                { _id: attachDoc._id },
+                                { 
+                                    $set: { 
+                                        driveFileId: uploadResult.fileId,
+                                        driveWebViewLink: uploadResult.webViewLink
+                                    } 
+                                }
+                            );
+
+                            this.logger.log(`Google Drive 업로드 성공: ${uploadResult.fileName} (ID: ${uploadResult.fileId})`);
+                        } else {
+                            this.logger.warn(`Google Drive 업로드 응답이 올바르지 않습니다`);
+                        }
+                    } catch (uploadError) {
+                        this.logger.error(`Google Drive 업로드 실패: ${finalName}`, uploadError);
+                        // 실패해도 계속 진행
+                    }
+
                     attachments.push({
                         filename: finalName,
                         filePath: `data/${finalName}`,
@@ -209,10 +271,10 @@ export class ApiController {
                 }
             }
 
-            // 9. 응답 반환
+            // 10. 응답 반환
             return res.status(200).json({
                 success: true,
-                message: '최신 입출금 내역 이메일 처리 완료',
+                message: '최신 입출금 내역 이메일 처리 및 Google Drive 업로드 완료',
                 email: {
                     id: message.id,
                     subject,
@@ -220,6 +282,7 @@ export class ApiController {
                     receivedDate,
                 },
                 attachments,
+                driveUploads: uploadResults,
             });
         } catch (error) {
             this.logger.error('입출금 내역 이메일 처리 중 오류 발생', error);

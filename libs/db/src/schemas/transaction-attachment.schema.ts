@@ -23,6 +23,12 @@ export class TransactionAttachment {
 
     @Prop()
     mimeType?: string;
+
+    @Prop()
+    driveFileId?: string;  // Google Drive 파일 ID
+
+    @Prop()
+    driveWebViewLink?: string;  // Google Drive 웹 링크
 }
 
 export type TransactionAttachmentDocument = TransactionAttachment & Document;
