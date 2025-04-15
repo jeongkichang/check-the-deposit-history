@@ -25,6 +25,7 @@ import { TransactionAttachment, TransactionAttachmentSchema } from '@libs/db/sch
             {
                 name: TransactionAttachment.name,
                 schema: TransactionAttachmentSchema,
+                collection: 'transaction_attachment',
             },
         ]),
         DbModule,
