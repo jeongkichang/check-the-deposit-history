@@ -322,7 +322,8 @@ export class ApiController {
         const scopes = [
             'https://www.googleapis.com/auth/gmail.readonly',
             'https://www.googleapis.com/auth/userinfo.profile',
-            'https://www.googleapis.com/auth/user.birthday.read',
+            'https://www.googleapis.com/auth/userinfo.email',
+            'openid',
         ];
 
         const url = this.oauth2Client.generateAuthUrl({
@@ -349,6 +350,7 @@ export class ApiController {
 
             this.oauth2Client.setCredentials(tokens);
 
+            // Google People API를 사용하여 사용자 정보 조회
             const people = google.people({ version: 'v1', auth: this.oauth2Client });
             const response = await people.people.get({
                 resourceName: 'people/me',
@@ -363,23 +365,42 @@ export class ApiController {
             const emails = userData.emailAddresses;
             const email = emails?.[0]?.value;
 
-            if(displayName !== process.env.GMAIL_USER_NAME){
+            // 로그에 사용자 정보 기록
+            this.logger.log(`OAuth 로그인 시도: 이름=${displayName}, 이메일=${email}`);
+
+            // 환경 변수에 설정된 사용자 이름과 일치하는지 확인 (옵션)
+            if (process.env.GMAIL_USER_NAME && displayName !== process.env.GMAIL_USER_NAME) {
                 return res.status(403).json({
                     message: '허용되지 않은 사용자입니다. 이름이 일치하지 않습니다.',
                     userName: displayName,
                 });
             }
 
-            const tokenDoc = new this.gmailTokenModel({
-                accessToken: tokens.access_token,
-                refreshToken: tokens.refresh_token,
-                scope: tokens.scope,
-                tokenType: tokens.token_type,
-                expiryDate: tokens.expiry_date,
-                name: displayName,
-                birthday,
-                email,
-            });
+            // 기존 토큰 확인 및 업데이트 또는 새로 생성
+            let tokenDoc = await this.gmailTokenModel.findOne().exec();
+            
+            if (tokenDoc) {
+                // 기존 토큰 업데이트
+                tokenDoc.accessToken = tokens.access_token;
+                tokenDoc.refreshToken = tokens.refresh_token || tokenDoc.refreshToken;
+                tokenDoc.scope = tokens.scope || tokenDoc.scope;
+                tokenDoc.tokenType = tokens.token_type || tokenDoc.tokenType;
+                tokenDoc.expiryDate = tokens.expiry_date || tokenDoc.expiryDate;
+                tokenDoc.name = displayName || undefined;
+                tokenDoc.email = email || undefined;
+            } else {
+                // 새 토큰 생성
+                tokenDoc = new this.gmailTokenModel({
+                    accessToken: tokens.access_token,
+                    refreshToken: tokens.refresh_token,
+                    scope: tokens.scope,
+                    tokenType: tokens.token_type,
+                    expiryDate: tokens.expiry_date,
+                    name: displayName || undefined,
+                    email: email || undefined,
+                });
+            }
+            
             await tokenDoc.save();
 
             return res.json({
@@ -396,6 +417,7 @@ export class ApiController {
             if (error instanceof Error) {
                 errMsg = error.message;
             }
+            this.logger.error('구글 인증 콜백 처리 중 에러 발생', error);
             return res.status(500).json({
                 message: '구글 인증 콜백 처리 중 에러 발생',
                 error: errMsg,

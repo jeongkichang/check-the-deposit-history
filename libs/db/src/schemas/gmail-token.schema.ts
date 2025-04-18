@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-@Schema()
+@Schema({ timestamps: true })
 export class GmailToken {
     @Prop()
     accessToken?: string;
@@ -17,7 +17,16 @@ export class GmailToken {
 
     @Prop()
     expiryDate?: number;
+    
+    @Prop()
+    name?: string;
+    
+    @Prop()
+    email?: string;
 }
 
-export type GmailTokenDocument = GmailToken & Document;
+export type GmailTokenDocument = GmailToken & Document & {
+    createdAt: Date;
+    updatedAt: Date;
+};
 export const GmailTokenSchema = SchemaFactory.createForClass(GmailToken);
